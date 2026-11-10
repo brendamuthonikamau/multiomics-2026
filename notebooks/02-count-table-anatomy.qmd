@@ -1,0 +1,315 @@
+---
+title: "Module 2 — Count Table Anatomy"
+format: html
+editor: source
+execute:
+  warning: false
+  message: false
+---
+
+> Use Pi freely. Each exercise ends with a **Part 3 — Check the agent**. That
+> part is the point: the skill we are building is catching a confident wrong
+> answer, not avoiding the agent.
+
+```{r setup}
+library(tidyverse)
+library(here)
+
+data_dir <- "data/2-workshop2/instructional_dataset"
+
+metadata <- read_csv(here(data_dir, "01_metadata.csv"))
+species  <- read_csv(here(data_dir, "02_microbiome_counts.csv"))    # 220 species  x 471 samples
+genes    <- read_csv(here(data_dir, "04_rnaseq_counts.csv.gz"))     # 14,226 genes x 471 samples
+taxonomy <- read_csv(here(data_dir, "03_microbiome_taxonomy.csv"))
+```
+
+```{r}
+metadata
+```
+
+# Exercise 1: What is in these two files?
+
+## Part 1 — Predict (no code)
+
+Answer before running anything below.
+
+**1. Of the 220 species, how many will you see in a single sample?**
+
+- *Your answer:*
+
+**2. Of the 14,226 genes, how many will you see in a single sample?**
+
+- *Your answer:*
+
+**3. Which table has a larger share of zero cells?**
+
+- *Your answer:*
+
+**4. One sample has 438 bacterial reads against a median of about 28,700. What will be wrong with it?**
+
+- *Your answer:*
+
+**5. A typical sample behaves like how many equally common species? Like how many equally expressed genes?**
+
+- *Your answer:*
+
+## Part 2 — Build
+
+```{r}
+# step 1: check the shapes line up with the metadata.
+# The first column of each count table is the feature name. Every other column
+# is a sample.
+dim(species)
+dim(genes)
+
+# sample_ids in the metadata that have no column in the count table.
+# Both should come back empty.
+metadata |> filter(!sample_id %in% names(species))
+metadata |> filter(!sample_id %in% names(genes))
+```
+
+```{r}
+# step 2: reshape each table so it has one row per feature per sample.
+species_long <- species |>
+  pivot_longer(-taxon, names_to = "sample_id", values_to = "count")
+
+# genes_long <- genes |> ...
+
+```
+
+```{r}
+# step 2, continued: the four per-sample summaries, for `species_long` first.
+# library_size, features_detected, zero_fraction, top_feature_share
+#
+# species_long |>
+#   group_by(sample_id) |>
+#   summarise(library_size = sum(count), ...)
+
+```
+
+```{r}
+# step 3: do the same for `genes_long`, then stack the two with bind_rows() so
+# you end up with one data frame that has a `table` column saying "species" or
+# "genes".
+
+```
+
+```{r}
+# step 4: plot library size for both tables. You will want a log scale.
+
+```
+
+```{r}
+# step 5: plot features_detected against library_size, faceted by table.
+# Then the Spearman correlation for each table:
+#   cor(library_size, features_detected, method = "spearman")
+# How many extra features does the trend actually amount to?
+
+```
+
+```{r}
+# step 6: find the sample with 438 bacterial reads, then filter() species_long
+# down to that sample and look at its counts.
+
+```
+
+```{r}
+# step 7: add Shannon diversity and the effective number of features.
+#
+# species_long |>
+#   group_by(sample_id) |>
+#   mutate(p = count / sum(count)) |>
+#   filter(p > 0) |>
+#   summarise(shannon   = -sum(p * log(p)),
+#             effective = exp(shannon))
+#
+# Median effective number in each table? Compare with your prediction and with
+# features_detected.
+
+```
+
+## Part 3 — Check the agent
+
+Work through these with Pi, and write what you found.
+
+- Do its library sizes match `sum()` of one column you pick yourself?
+  - *Your answer:*
+- Is `features_detected` never larger than the number of features in the table, for every sample?
+  - *Your answer:*
+- Does its data frame have 942 rows, 471 for each table? If it has 471, it dropped a table.
+  - *Your answer:*
+- Ask it which samples to drop, then ask what happens if you keep them. Do the two answers agree?
+  - *Your answer:*
+- Ask which logarithm `log()` is in R, then what the effective number would be if the formula used `log2()`. Does the effective number change?
+  - *Your answer:*
+
+# Exercise 2: Filtering, normalising, and one column you need all week
+
+## Part 1 — Predict (no code)
+
+**1. Keeping only species present in at least 10% of samples: how many of the 220 survive, and what share of reads is lost?**
+
+- *Your answer:*
+
+**2. The same 10% rule applied to 14,226 genes: how many survive?**
+
+- *Your answer:*
+
+**3. To compare one species between two samples, what must you do to the counts first?**
+
+- *Your answer:*
+
+## Part 2 — Build
+
+```{r}
+# step 1: prevalence for every feature in both tables, then plot the distributions.
+#
+# species_long |>
+#   group_by(taxon) |>
+#   summarise(prevalence = mean(count > 0))
+
+```
+
+```{r}
+# step 2: for cutoffs 0 to 0.9, how many features survive and what share of all
+# counts survives? Plot both. This is the figure that shows a prevalence filter
+# is right for one table and wrong for the other.
+
+```
+
+```{r}
+# step 3: convert both tables to counts per million.
+#
+# species_long |>
+#   group_by(sample_id) |>
+#   mutate(proportion = count / sum(count),
+#          cpm        = proportion * 1e6) |>
+#   ungroup()
+
+```
+
+```{r}
+# step 4: choose and apply a filter to each table. Write one sentence per table
+# in the text below saying why.
+#
+# A grouped filter() keeps or drops a whole feature at once:
+#   group_by(taxon) |> filter(mean(count > 0) >= 0.10) |> ungroup()
+#
+# For the gene table, filter on expression level, not prevalence.
+
+```
+
+*Why I filtered the species table this way:*
+
+*Why I filtered the gene table this way:*
+
+```{r}
+# step 4, continued: add a log2(cpm + 1) column.
+# Plot one feature before and after the log.
+
+```
+
+```{r}
+# step 5: THE IMPORTANT ONE.
+# From the species table, compute each sample's Lactobacillus fraction.
+# `taxonomy` tells you which species belong to that genus, and left_join()
+# attaches it to species_long by `taxon`.
+#
+# Then make a `community` column: "lactobacillus" if the fraction is >= 0.5,
+# "anaerobe" otherwise.
+
+```
+
+```{r}
+# step 6: save it. This afternoon's notebook reads this file back, and so does
+# Wednesday's.
+#
+# write_csv(sample_groups, here("data/my_sample_groups.csv"))
+
+```
+
+```{r}
+# step 7: compare the effective number of species between the two community
+# groups, as a boxplot on a log scale. Which group is more diverse, and is that
+# what you would call healthy?
+
+```
+
+```{r}
+# step 8: how many samples in each group? Does the split change across visits?
+
+```
+
+## Part 3 — Draw both tables with microViz
+
+```{r}
+# step 1: build the microViz object for each table and attach your `community`
+# column to it. ps_join() drops the 22 species with no reads in any sample, so
+# species_ps holds 198.
+library(microViz)
+source(here("R/count_tables.R"))
+
+# my_groups <- sample_groups |> select(sample_id, lacto_fraction, community)
+#
+# species_ps <- as_counts(table = "microbiome") |> ps_join(my_groups, by = "sample_id")
+# genes_ps   <- as_counts(table = "rnaseq") |> ps_join(my_groups, by = "sample_id")
+
+```
+
+```{r}
+# step 2: the stacked bar chart for each table. The gene one takes about a
+# minute. Roughly what share of a typical bar is "Other" in each?
+#
+# species_ps |> comp_barplot(tax_level = "Genus", n_taxa = 10)
+# genes_ps   |> comp_barplot(tax_level = "symbol", n_taxa = 10)
+
+```
+
+```{r}
+# step 3: the species table as a heatmap of the 20 largest genera, with your
+# community column as a strip along the top.
+#
+# species_log <- species_ps |>
+#   tax_transform("compositional", rank = "Genus") |>
+#   tax_transform("log2", zero_replace = "halfmin", chain = TRUE)
+#
+# species_log |>
+#   comp_heatmap(
+#     taxa = tax_top(species_log, n = 20),
+#     sample_anno = sampleAnnotation(community = anno_sample_cat("community"))
+#   )
+
+```
+
+*Do samples from the same community group sit next to each other? Which genera separate them?*
+
+```{r}
+# step 4: the same heatmap for the gene table, with rank = "symbol" and the 25
+# largest genes.
+
+```
+
+*Do the community groups sit together this time? Which two genes have rows that look alike?*
+
+## Part 4 — Check the agent
+
+- Ask Pi to compute the Lactobacillus fraction. Does its answer for one sample match yours to three decimals?
+  - *Your answer:*
+- Ask which species names it matched, and read the list. Did partial or case-insensitive matching catch anything it should not have?
+  - *Your answer:*
+- Is `lacto_fraction` between 0 and 1 for every sample? Check the min and max.
+  - *Your answer:*
+- Ask it to justify the 0.5 cutoff. Is the justification real, or just fluent?
+  - *Your answer:*
+- Ask what `zero_replace = "halfmin"` does in your heatmap code, then what the heatmap would look like with `zero_replace = 1`. Run both. Was it right?
+  - *Your answer:*
+
+## Part 5 — Reach (optional)
+
+```{r}
+# Run your whole per-sample summary on a group project dataset.
+# The column names are identical, so this should work unchanged.
+#
+# Change one line: data_dir <- "data/2-workshop2/group_a_probiotic"
+
+```
